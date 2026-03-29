@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema CLIC - Chamada 10 Encontros</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        .encontro-card { 
+            cursor: pointer; border: 1px solid #dee2e6; 
+            border-radius: 15px; background: white; transition: 0.2s;
+            text-align: center; padding: 15px; height: 100%;
+        }
+        .encontro-card:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .encontro-card.active { background: #1a73e8 !important; color: white !important; border-color: #1a73e8; }
+        .encontro-card.past { background: #e8f0fe; color: #1a73e8; }
+        .nav-pills .nav-link.active { background-color: #1a73e8 !important; }
+        .nav-link { color: #1a73e8; font-weight: bold; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .btn-primary { background-color: #1a73e8; border: none; }
+        .status-btn { font-size: 1.6rem; cursor: pointer; user-select: none; }
+        .badge-hoje { background: #ff9800; color: white; font-size: 0.7rem; display: block; margin-top: 5px; border-radius: 5px; }
+    </style>
+</head>
+<body class="py-3">
+    <div class="container" style="max-width: 800px;">
+        <h3 class="text-center fw-bold mb-4" style="color: #1a73e8;">CLIC - Gestão de Frequência</h3>
+
+        <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded-pill shadow-sm" id="pills-tab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active rounded-pill" id="btn-tab-chamada" data-bs-toggle="pill" data-bs-target="#tab-chamada" type="button">📅 Encontros</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link rounded-pill" id="btn-tab-alunos" data-bs-toggle="pill" data-bs-target="#tab-alunos" type="button" onclick="renderAlunos()">🎓 Alunos</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-chamada">
+                <div id="gridEncontros" class="row g-2 mb-4"></div>
+                
+                <div id="areaLista" style="display:none;" class="card mb-5">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold" id="tituloEncontro"></h5>
+                        <span class="badge bg-secondary" id="contadorPresenca">0 presentes</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <tbody id="corpoChamada"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-alunos">
+                <div class="card border-primary mb-4">
+                    <div class="card-body text-center">
+                        <h6 class="fw-bold mb-3">Sincronização do Ciclo CLIC</h6>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary fw-bold" onclick="exportarBackup()">📥 Baixar Backup (JSON)</button>
+                            <label class="btn btn-primary fw-bold">
+                                📤 Restaurar Backup (Importar)
+                                <input type="file" id="inputFile" hidden onchange="importarBackup(this)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3"><div class="card-body">
+                    <h6 class="fw-bold mb-3">Cadastrar Novo Aluno</h6>
+                    <div class="input-group">
+                        <input type="text" id="novoAluno" class="form-control" placeholder="Nome Completo">
+                        <button class="btn btn-success" onclick="addAluno()">Adicionar</button>
+                    </div>
+                </div></div>
+                
+                <div class="card overflow-hidden">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light"><tr><th class="ps-3">Nome do Aluno</th><th class="text-end pe-3">Ação</th></tr></thead>
+                        <tbody id="listaAlunos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Datas dos 10 Domingos do Ciclo
+        const datasCiclo = [
+            "2026-03-01", "2026-03-08", "2026-03-15", "2026-03-22", 
+            "2026-03-29", "2026-04-05", "2026-04-12", "2026-04-19",
+            "2026-04-26", "2026-05-03"
+        ];
+
+        let encontroAtivo = "";
+
+        const DB = {
+            getAlunos: () => JSON.parse(localStorage.getItem('clic_alunos') || '[]'),
+            setAlunos: (d) => localStorage.setItem('clic_alunos', JSON.stringify(d)),
+            getPres: () => JSON.parse(localStorage.getItem('clic_presenca') || '{}'),
+            setPres: (d) => localStorage.setItem('clic_presenca', JSON.stringify(d))
+        };
+
+        function renderGrid() {
+            const grid = document.getElementById('gridEncontros');
+            const hoje = new Date().toISOString().slice(0,10);
+            
+            grid.innerHTML = datasCiclo.map((data, i) => {
+                const isHoje = data === hoje;
+                const isPassado = data < hoje;
+                let classeExtra = "";
+                if (encontroAtivo === data) classeExtra = "active";
+                else if (isPassado) classeExtra = "past";
+
+                return `
+                <div class="col-4 col-md-3 mb-2">
+                    <div class="encontro-card ${classeExtra}" onclick="abrirEncontro('${data}')">
+                        <small class="d-block text-uppercase" style="font-size: 0.6rem">Encontro ${i+1}</small>
+                        <strong>${data.split('-').reverse().slice(0,2).join('/')}</strong>
+                        ${isHoje ? '<span class="badge-hoje">HOJE</span>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function abrirEncontro(data) {
+            encontroAtivo = data;
+            renderGrid();
+            document.getElementById('areaLista').style.display = 'block';
+            document.getElementById('tituloEncontro').innerText = `Data: ${data.split('-').reverse().join('/')}`;
+            
+            const alunos = DB.getAlunos().sort((a,b) => a.localeCompare(b));
+            const pres = DB.getPres()[data] || {};
+            let count = 0;
+
+            if(alunos.length === 0) {
+                document.getElementById('corpoChamada').innerHTML = '<tr><td class="p-4 text-center text-muted">Vá na aba "Alunos" para cadastrar a turma.</td></tr>';
+                document.getElementById('contadorPresenca').innerText = "0 presentes";
+                return;
+            }
+
+            document.getElementById('corpoChamada').innerHTML = alunos.map(nome => {
+                if(pres[nome]) count++;
+                return `
+                <tr><td class="ps-3 fw-bold">${nome}</td>
+                <td class="text-end pe-4 status-btn" onclick="togglePresenca('${nome}')">
+                    ${pres[nome] ? '✅' : '⬜'}
+                </td></tr>`;
+            }).join('');
+            
+            document.getElementById('contadorPresenca').innerText = `${count} presentes`;
+        }
+
+        function togglePresenca(nome) {
+            const p = DB.getPres();
+            if(!p[encontroAtivo]) p[encontroAtivo] = {};
+            p[encontroAtivo][nome] = !p[encontroAtivo][nome];
+            DB.setPres(p);
+            abrirEncontro(encontroAtivo);
+        }
+
+        function renderAlunos() {
+            const lista = DB.getAlunos().sort((a,b) => a.localeCompare(b));
+            const corpo = document.getElementById('listaAlunos');
+            if(lista.length === 0) {
+                corpo.innerHTML = '<tr><td colspan="2" class="text-center p-4 text-muted">Lista vazia. Adicione alunos ou importe um backup.</td></tr>';
+                return;
+            }
+            corpo.innerHTML = lista.map(nome => `
+                <tr><td class="ps-3">${nome}</td>
+                <td class="text-end pe-3"><button class="btn btn-sm btn-outline-danger" onclick="delAluno('${nome}')">Remover</button></td></tr>
+            `).join('');
+        }
+
+        function addAluno() {
+            const input = document.getElementById('novoAluno');
+            const nome = input.value.toUpperCase().trim();
+            if(!nome) return;
+            const lista = DB.getAlunos();
+            if(lista.includes(nome)) return alert("Este aluno já está na lista!");
+            lista.push(nome);
+            DB.setAlunos(lista);
+            input.value = "";
+            renderAlunos();
+            // Atualiza a lista de chamada se houver um dia aberto
+            if(encontroAtivo) abrirEncontro(encontroAtivo);
+        }
+
+        function delAluno(nome) {
+            if(confirm(`Remover ${nome} da lista?`)) {
+                const lista = DB.getAlunos().filter(n => n !== nome);
+                DB.setAlunos(lista);
+                renderAlunos();
+                if(encontroAtivo) abrirEncontro(encontroAtivo);
+            }
+        }
+
+        function exportarBackup() {
+            const dados = { alunos: DB.getAlunos(), presenca: DB.getPres() };
+            const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `backup_clic_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        }
+
+        function importarBackup(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const d = JSON.parse(e.target.result);
+                    if(confirm("Deseja restaurar os dados? Isso substituirá a lista atual.")) {
+                        if(d.alunos) DB.setAlunos(d.alunos);
+                        if(d.presenca) DB.setPres(d.presenca);
+                        alert("Dados restaurados com sucesso!");
+                        location.reload();
+                    }
+                } catch(err) { alert("Arquivo de backup inválido!"); }
+            };
+            reader.readAsText(file);
+        }
+
+        // Inicialização
+        window.onload = () => {
+            renderGrid();
+            // Abrir automaticamente o encontro de hoje se for domingo
+            const hoje = new Date().toISOString().slice(0,10);
+            if(datasCiclo.includes(hoje)) {
+                abrirEncontro(hoje);
+            }
+        };
+    </script>
+</body>
+</html>
