@@ -3,83 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema CLIC - Chamada 10 Encontros</title>
+    <title>Sistema CLIC - Gestão Multi-Turmas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .config-panel { background: #ffffff; border-radius: 20px; padding: 20px; border: 2px solid #e1e4e8; margin-bottom: 20px; }
         .encontro-card { 
             cursor: pointer; border: 1px solid #dee2e6; 
-            border-radius: 15px; background: white; transition: 0.2s;
-            text-align: center; padding: 15px; height: 100%;
+            border-radius: 12px; background: white; transition: 0.2s;
+            text-align: center; padding: 12px; height: 100%;
         }
-        .encontro-card:hover { transform: translateY(-3px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .encontro-card.active { background: #1a73e8 !important; color: white !important; border-color: #1a73e8; }
-        .encontro-card.past { background: #e8f0fe; color: #1a73e8; }
-        .nav-pills .nav-link.active { background-color: #1a73e8 !important; }
-        .nav-link { color: #1a73e8; font-weight: bold; }
-        .card { border: none; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .btn-primary { background-color: #1a73e8; border: none; }
-        .status-btn { font-size: 1.6rem; cursor: pointer; user-select: none; }
-        .badge-hoje { background: #ff9800; color: white; font-size: 0.7rem; display: block; margin-top: 5px; border-radius: 5px; }
+        .encontro-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .encontro-card.active { background: #0d6efd !important; color: white !important; }
+        .encontro-card.past { background: #e9ecef; color: #6c757d; }
+        .nav-pills .nav-link.active { background-color: #0d6efd !important; border-radius: 50px; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .status-btn { font-size: 1.5rem; cursor: pointer; }
+        .badge-hoje { background: #ff9800; color: white; font-size: 0.65rem; border-radius: 4px; padding: 2px 4px; margin-top: 4px; display: inline-block; }
     </style>
 </head>
-<body class="py-3">
-    <div class="container" style="max-width: 800px;">
-        <h3 class="text-center fw-bold mb-4" style="color: #1a73e8;">CLIC - Gestão de Frequência</h3>
+<body class="py-4">
+    <div class="container" style="max-width: 900px;">
+        
+        <div class="config-panel shadow-sm">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="small fw-bold text-primary">PROGRAMA</label>
+                    <select id="cfg-clic" class="form-select border-primary" onchange="trocarContextoGeral()">
+                        <option value="CLIC_1">CLIC 1</option>
+                        <option value="CLIC_2">CLIC 2</option>
+                        <option value="CLIC_3">CLIC_3</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold text-primary">CICLO</label>
+                    <select id="cfg-ciclo" class="form-select border-primary" onchange="trocarContextoGeral()">
+                        <option value="CICLO_1">Ciclo 1</option>
+                        <option value="CICLO_2">Ciclo 2</option>
+                        <option value="CICLO_3">Ciclo 3</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="small fw-bold text-muted">Ações do Calendário</label>
+                    <div class="d-flex gap-2">
+                        <input type="date" id="cfg-data-base" class="form-control form-control-sm" onchange="sugerirNovasDatas()">
+                        <button class="btn btn-sm btn-dark" type="button" data-bs-toggle="collapse" data-bs-target="#panelDatas">Ajustar Dias</button>
+                    </div>
+                </div>
+            </div>
 
-        <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded-pill shadow-sm" id="pills-tab" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active rounded-pill" id="btn-tab-chamada" data-bs-toggle="pill" data-bs-target="#tab-chamada" type="button">📅 Encontros</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link rounded-pill" id="btn-tab-alunos" data-bs-toggle="pill" data-bs-target="#tab-alunos" type="button" onclick="renderAlunos()">🎓 Alunos</button>
-            </li>
+            <div class="collapse mt-3" id="panelDatas">
+                <div class="card card-body bg-light">
+                    <p class="small fw-bold mb-2">Ajuste as datas (para pular feriados como Páscoa/Dia das Mães):</p>
+                    <div id="listaInputsDatas" class="row g-2"></div>
+                    <div class="text-end mt-3">
+                        <button class="btn btn-success btn-sm fw-bold" onclick="salvarCalendario()">Confirmar Calendário</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="text-center fw-bold text-dark mb-4">Gestão de Frequência: <span id="displayContexto" class="text-primary">-</span></h4>
+
+        <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded-pill shadow-sm">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-presenca">📅 Chamada</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-alunos" onclick="renderAlunos()">🎓 Alunos / Backup</button></li>
         </ul>
 
         <div class="tab-content">
-            <div class="tab-pane fade show active" id="tab-chamada">
+            <div class="tab-pane fade show active" id="tab-presenca">
                 <div id="gridEncontros" class="row g-2 mb-4"></div>
-                
-                <div id="areaLista" style="display:none;" class="card mb-5">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-bold" id="tituloEncontro"></h5>
-                        <span class="badge bg-secondary" id="contadorPresenca">0 presentes</span>
+                <div id="areaChamada" style="display:none;" class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                        <h5 class="mb-0 fw-bold" id="infoData"></h5>
+                        <span class="badge bg-primary rounded-pill" id="totalPresentes">0</span>
                     </div>
                     <div class="table-responsive">
-                        <table class="table align-middle mb-0">
-                            <tbody id="corpoChamada"></tbody>
+                        <table class="table table-hover align-middle mb-0">
+                            <tbody id="listaChamada"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
             <div class="tab-pane fade" id="tab-alunos">
-                <div class="card border-primary mb-4">
-                    <div class="card-body text-center">
-                        <h6 class="fw-bold mb-3">Sincronização do Ciclo CLIC</h6>
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-primary fw-bold" onclick="exportarBackup()">📥 Baixar Backup (JSON)</button>
-                            <label class="btn btn-primary fw-bold">
-                                📤 Restaurar Backup (Importar)
-                                <input type="file" id="inputFile" hidden onchange="importarBackup(this)">
-                            </label>
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <div class="card p-3 mb-3">
+                            <h6 class="fw-bold">Cadastrar Aluno no <span class="text-primary ctx-nome"></span></h6>
+                            <div class="input-group">
+                                <input type="text" id="inputNovoAluno" class="form-control" placeholder="NOME COMPLETO">
+                                <button class="btn btn-primary" onclick="addAluno()">Adicionar</button>
+                            </div>
+                        </div>
+                        <div class="card overflow-hidden">
+                            <table class="table mb-0"><tbody id="tabelaAlunos"></tbody></table>
                         </div>
                     </div>
-                </div>
-
-                <div class="card mb-3"><div class="card-body">
-                    <h6 class="fw-bold mb-3">Cadastrar Novo Aluno</h6>
-                    <div class="input-group">
-                        <input type="text" id="novoAluno" class="form-control" placeholder="Nome Completo">
-                        <button class="btn btn-success" onclick="addAluno()">Adicionar</button>
+                    <div class="col-md-5">
+                        <div class="card p-3 text-center border-warning">
+                            <h6 class="fw-bold">Segurança de Dados</h6>
+                            <p class="small text-muted">Baixe o backup para salvar os dados do <span class="ctx-nome text-primary"></span>.</p>
+                            <button class="btn btn-outline-dark btn-sm w-100 mb-2" onclick="exportarBackup()">📥 Baixar Backup deste Ciclo</button>
+                            <label class="btn btn-dark btn-sm w-100">📤 Restaurar Backup <input type="file" hidden onchange="importarBackup(this)"></label>
+                        </div>
                     </div>
-                </div></div>
-                
-                <div class="card overflow-hidden">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light"><tr><th class="ps-3">Nome do Aluno</th><th class="text-end pe-3">Ação</th></tr></thead>
-                        <tbody id="listaAlunos"></tbody>
-                    </table>
                 </div>
             </div>
         </div>
@@ -87,122 +115,140 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Datas dos 10 Domingos do Ciclo
-        const datasCiclo = [
-            "2026-03-01", "2026-03-08", "2026-03-15", "2026-03-22", 
-            "2026-03-29", "2026-04-05", "2026-04-12", "2026-04-19",
-            "2026-04-26", "2026-05-03"
-        ];
+        let datasAtuais = [];
+        let encontroSelecionado = "";
 
-        let encontroAtivo = "";
+        // GERA A CHAVE ÚNICA (Ex: CLIC_1_CICLO_2)
+        function getContexto() {
+            return `${document.getElementById('cfg-clic').value}_${document.getElementById('cfg-ciclo').value}`;
+        }
 
         const DB = {
-            getAlunos: () => JSON.parse(localStorage.getItem('clic_alunos') || '[]'),
-            setAlunos: (d) => localStorage.setItem('clic_alunos', JSON.stringify(d)),
-            getPres: () => JSON.parse(localStorage.getItem('clic_presenca') || '{}'),
-            setPres: (d) => localStorage.setItem('clic_presenca', JSON.stringify(d))
+            get: (key) => JSON.parse(localStorage.getItem(`${getContexto()}_${key}`) || (key === 'pres' ? '{}' : '[]')),
+            set: (key, val) => localStorage.setItem(`${getContexto()}_${key}`, JSON.stringify(val))
         };
 
-        function renderGrid() {
-            const grid = document.getElementById('gridEncontros');
-            const hoje = new Date().toISOString().slice(0,10);
+        function trocarContextoGeral() {
+            encontroSelecionado = "";
+            document.getElementById('areaChamada').style.display = 'none';
+            document.getElementById('displayContexto').innerText = getContexto().replace(/_/g, ' ');
+            document.querySelectorAll('.ctx-nome').forEach(el => el.innerText = getContexto().replace(/_/g, ' '));
             
-            grid.innerHTML = datasCiclo.map((data, i) => {
-                const isHoje = data === hoje;
-                const isPassado = data < hoje;
-                let classeExtra = "";
-                if (encontroAtivo === data) classeExtra = "active";
-                else if (isPassado) classeExtra = "past";
+            datasAtuais = DB.get('datas');
+            if(datasAtuais.length === 0) {
+                document.getElementById('cfg-data-base').value = "2026-03-01";
+                sugerirNovasDatas();
+            } else {
+                gerarInputsAjuste(datasAtuais);
+                renderGrid();
+            }
+            renderAlunos();
+        }
 
+        function sugerirNovasDatas() {
+            const base = new Date(document.getElementById('cfg-data-base').value + "T12:00:00");
+            const novas = [];
+            for(let i=0; i<10; i++) {
+                let d = new Date(base);
+                d.setDate(base.getDate() + (i * 7));
+                novas.push(d.toISOString().slice(0,10));
+            }
+            gerarInputsAjuste(novas);
+        }
+
+        function gerarInputsAjuste(datas) {
+            const container = document.getElementById('listaInputsDatas');
+            container.innerHTML = datas.map((d, i) => `
+                <div class="col-6 col-md-4">
+                    <label class="small text-muted">Encontro ${i+1}</label>
+                    <input type="date" class="form-control form-control-sm input-data-manual" value="${d}">
+                </div>
+            `).join('');
+        }
+
+        function salvarCalendario() {
+            const inputs = document.querySelectorAll('.input-data-manual');
+            datasAtuais = Array.from(inputs).map(i => i.value);
+            DB.set('datas', datasAtuais);
+            bootstrap.Collapse.getInstance(document.getElementById('panelDatas')).hide();
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const hoje = new Date().toISOString().slice(0,10);
+            document.getElementById('gridEncontros').innerHTML = datasAtuais.map((d, i) => {
+                let statusClass = (encontroSelecionado === d) ? "active" : (d < hoje ? "past" : "");
                 return `
                 <div class="col-4 col-md-3 mb-2">
-                    <div class="encontro-card ${classeExtra}" onclick="abrirEncontro('${data}')">
+                    <div class="encontro-card ${statusClass}" onclick="abrirEncontro('${d}')">
                         <small class="d-block text-uppercase" style="font-size: 0.6rem">Encontro ${i+1}</small>
-                        <strong>${data.split('-').reverse().slice(0,2).join('/')}</strong>
-                        ${isHoje ? '<span class="badge-hoje">HOJE</span>' : ''}
+                        <strong style="font-size: 0.9rem">${d.split('-').reverse().slice(0,2).join('/')}</strong>
+                        ${d === hoje ? '<br><span class="badge-hoje">HOJE</span>' : ''}
                     </div>
                 </div>`;
             }).join('');
         }
 
         function abrirEncontro(data) {
-            encontroAtivo = data;
+            encontroSelecionado = data;
             renderGrid();
-            document.getElementById('areaLista').style.display = 'block';
-            document.getElementById('tituloEncontro').innerText = `Data: ${data.split('-').reverse().join('/')}`;
+            document.getElementById('areaChamada').style.display = 'block';
+            document.getElementById('infoData').innerText = `Presença: ${data.split('-').reverse().join('/')}`;
             
-            const alunos = DB.getAlunos().sort((a,b) => a.localeCompare(b));
-            const pres = DB.getPres()[data] || {};
+            const alunos = DB.get('alunos').sort((a,b) => a.localeCompare(b));
+            const pres = DB.get('pres')[data] || {};
             let count = 0;
 
-            if(alunos.length === 0) {
-                document.getElementById('corpoChamada').innerHTML = '<tr><td class="p-4 text-center text-muted">Vá na aba "Alunos" para cadastrar a turma.</td></tr>';
-                document.getElementById('contadorPresenca').innerText = "0 presentes";
-                return;
-            }
-
-            document.getElementById('corpoChamada').innerHTML = alunos.map(nome => {
+            document.getElementById('listaChamada').innerHTML = alunos.map(nome => {
                 if(pres[nome]) count++;
-                return `
-                <tr><td class="ps-3 fw-bold">${nome}</td>
-                <td class="text-end pe-4 status-btn" onclick="togglePresenca('${nome}')">
-                    ${pres[nome] ? '✅' : '⬜'}
-                </td></tr>`;
-            }).join('');
+                return `<tr><td class="ps-3 fw-bold">${nome}</td>
+                <td class="text-end pe-4 status-btn" onclick="togglePresenca('${nome}')">${pres[nome] ? '✅' : '⬜'}</td></tr>`;
+            }).join('') || '<tr><td class="p-4 text-center text-muted">Nenhum aluno cadastrado para este ciclo.</td></tr>';
             
-            document.getElementById('contadorPresenca').innerText = `${count} presentes`;
+            document.getElementById('totalPresentes').innerText = `${count} presentes`;
         }
 
         function togglePresenca(nome) {
-            const p = DB.getPres();
-            if(!p[encontroAtivo]) p[encontroAtivo] = {};
-            p[encontroAtivo][nome] = !p[encontroAtivo][nome];
-            DB.setPres(p);
-            abrirEncontro(encontroAtivo);
+            const p = DB.get('pres');
+            if(!p[encontroSelecionado]) p[encontroSelecionado] = {};
+            p[encontroSelecionado][nome] = !p[encontroSelecionado][nome];
+            DB.set('pres', p);
+            abrirEncontro(encontroSelecionado);
         }
 
         function renderAlunos() {
-            const lista = DB.getAlunos().sort((a,b) => a.localeCompare(b));
-            const corpo = document.getElementById('listaAlunos');
-            if(lista.length === 0) {
-                corpo.innerHTML = '<tr><td colspan="2" class="text-center p-4 text-muted">Lista vazia. Adicione alunos ou importe um backup.</td></tr>';
-                return;
-            }
-            corpo.innerHTML = lista.map(nome => `
-                <tr><td class="ps-3">${nome}</td>
-                <td class="text-end pe-3"><button class="btn btn-sm btn-outline-danger" onclick="delAluno('${nome}')">Remover</button></td></tr>
-            `).join('');
+            const lista = DB.get('alunos').sort((a,b) => a.localeCompare(b));
+            document.getElementById('tabelaAlunos').innerHTML = lista.map(nome => `
+                <tr><td class="ps-3">${nome}</td><td class="text-end"><button class="btn btn-link text-danger btn-sm" onclick="delAluno('${nome}')">Remover</button></td></tr>
+            `).join('') || '<tr><td class="p-3 text-center text-muted">Lista vazia</td></tr>';
         }
 
         function addAluno() {
-            const input = document.getElementById('novoAluno');
+            const input = document.getElementById('inputNovoAluno');
             const nome = input.value.toUpperCase().trim();
             if(!nome) return;
-            const lista = DB.getAlunos();
-            if(lista.includes(nome)) return alert("Este aluno já está na lista!");
-            lista.push(nome);
-            DB.setAlunos(lista);
-            input.value = "";
-            renderAlunos();
-            // Atualiza a lista de chamada se houver um dia aberto
-            if(encontroAtivo) abrirEncontro(encontroAtivo);
+            const lista = DB.get('alunos');
+            if(!lista.includes(nome)) {
+                lista.push(nome);
+                DB.set('alunos', lista);
+                input.value = "";
+                renderAlunos();
+            }
         }
 
         function delAluno(nome) {
-            if(confirm(`Remover ${nome} da lista?`)) {
-                const lista = DB.getAlunos().filter(n => n !== nome);
-                DB.setAlunos(lista);
+            if(confirm(`Remover ${nome}?`)) {
+                DB.set('alunos', DB.get('alunos').filter(n => n !== nome));
                 renderAlunos();
-                if(encontroAtivo) abrirEncontro(encontroAtivo);
             }
         }
 
         function exportarBackup() {
-            const dados = { alunos: DB.getAlunos(), presenca: DB.getPres() };
+            const dados = { id: getContexto(), datas: datasAtuais, alunos: DB.get('alunos'), pres: DB.get('pres') };
             const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `backup_clic_${new Date().toISOString().slice(0,10)}.json`;
+            a.download = `backup_${getContexto()}_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
         }
 
@@ -213,26 +259,19 @@
             reader.onload = (e) => {
                 try {
                     const d = JSON.parse(e.target.result);
-                    if(confirm("Deseja restaurar os dados? Isso substituirá a lista atual.")) {
-                        if(d.alunos) DB.setAlunos(d.alunos);
-                        if(d.presenca) DB.setPres(d.presenca);
-                        alert("Dados restaurados com sucesso!");
+                    if(confirm(`Restaurar backup para o ${getContexto()}?`)) {
+                        DB.set('alunos', d.alunos || []);
+                        DB.set('pres', d.pres || {});
+                        DB.set('datas', d.datas || []);
                         location.reload();
                     }
-                } catch(err) { alert("Arquivo de backup inválido!"); }
+                } catch(e) { alert("Arquivo inválido."); }
             };
             reader.readAsText(file);
         }
 
-        // Inicialização
-        window.onload = () => {
-            renderGrid();
-            // Abrir automaticamente o encontro de hoje se for domingo
-            const hoje = new Date().toISOString().slice(0,10);
-            if(datasCiclo.includes(hoje)) {
-                abrirEncontro(hoje);
-            }
-        };
+        window.onload = trocarContextoGeral;
     </script>
 </body>
 </html>
+
